@@ -1,0 +1,125 @@
+<div id="rescrape-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Re-scraping <span id="modal-scraper-name"></span></h2>
+            <a href="#" class="modal-close" onclick="closeRescrapeModal(event)">&times;</a>
+        </div>
+        <div class="modal-body">
+            <div id="modal-spinner" class="spinner-container">
+                <div class="spinner"></div>
+                <p id="modal-status-text">Scraping in progress...</p>
+            </div>
+            <div id="modal-results" style="display: none;">
+                <div id="modal-result-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRescrapeModal(scraperName, targetUrl = null) {
+    const modal = document.getElementById('rescrape-modal');
+    const scraperNameSpan = document.getElementById('modal-scraper-name');
+    const statusText = document.getElementById('modal-status-text');
+    const spinner = document.getElementById('modal-spinner');
+    const results = document.getElementById('modal-results');
+
+    scraperNameSpan.textContent = scraperName;
+    statusText.textContent = 'Scraping in progress...';
+    spinner.style.display = 'block';
+    results.style.display = 'none';
+
+    modal.style.display = 'flex';
+
+    // Trigger rescrape API call
+    const queryParams = new URLSearchParams();
+    if (targetUrl) {
+        queryParams.set('url', targetUrl);
+    }
+    const apiUrl = `/api/scraper/${scraperName}/rescrape${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    fetch(apiUrl, { method: 'POST' })
+        .then(response => {
+            return response.json().then(data => ({
+                status: response.status,
+                data: data
+            }));
+        })
+        .then(({ status, data }) => {
+            // Include HTTP status code in response
+            data.http_status = data.http_status || status;
+            displayRescrapeResults(data);
+        })
+        .catch(error => {
+            displayRescrapeError(error.message);
+        });
+}
+
+function displayRescrapeResults(data) {
+    const spinner = document.getElementById('modal-spinner');
+    const results = document.getElementById('modal-results');
+    const resultContent = document.getElementById('modal-result-content');
+
+    spinner.style.display = 'none';
+    results.style.display = 'block';
+
+    if (data.status === 'success') {
+        const eventClass = data.event_count > 0 ? 'result-status-success' : 'result-status-warning';
+        const icon = data.event_count > 0 ? '✓' : '⚠';
+        const statusDisplay = data.http_status === -1 ? 'Error (no HTTP response)' : `HTTP ${data.http_status}`;
+        const errorDetail = data.error_message ? `<br>Error: ${data.error_message}` : '';
+        resultContent.innerHTML = `
+            <div class="rescrape-result-item ${eventClass}">
+                <strong>${icon} Scraping completed</strong><br>
+                Scraper: ${data.scraper_name}<br>
+                ${data.url ? `URL: ${data.url}<br>` : ''}
+                Status: ${statusDisplay}${errorDetail}<br>
+                Events found: <strong>${data.event_count}</strong><br>
+                ${data.message}
+            </div>
+        `;
+    } else if (data.status === 'error') {
+        const statusDisplay = data.http_status ? (data.http_status === -1 ? 'Error' : `HTTP ${data.http_status}`) : 'Unknown';
+        resultContent.innerHTML = `
+            <div class="rescrape-result-item result-status-error">
+                <strong>✗ Scraping failed</strong><br>
+                Scraper: ${data.scraper_name}<br>
+                ${data.url ? `URL: ${data.url}<br>` : ''}
+                Status: ${statusDisplay}<br>
+                Error: ${data.message}
+            </div>
+        `;
+    } else {
+        resultContent.innerHTML = `<div class="rescrape-result-item">${JSON.stringify(data)}</div>`;
+    }
+}
+
+function displayRescrapeError(errorMessage) {
+    const spinner = document.getElementById('modal-spinner');
+    const results = document.getElementById('modal-results');
+    const resultContent = document.getElementById('modal-result-content');
+
+    spinner.style.display = 'none';
+    results.style.display = 'block';
+
+    resultContent.innerHTML = `
+        <div class="rescrape-result-item result-status-error">
+            <strong>✗ Rescrape failed</strong><br>
+            Error: ${errorMessage}
+        </div>
+    `;
+}
+
+function closeRescrapeModal(event) {
+    event.preventDefault();
+    const modal = document.getElementById('rescrape-modal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside of modal-content
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('rescrape-modal');
+    if (event.target === modal) {
+        modal.style.display = 'none';
+    }
+});
+</script>

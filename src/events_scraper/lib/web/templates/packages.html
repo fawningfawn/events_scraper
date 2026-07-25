@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Packages{% endblock %}
+
+{% block page_title %}Packages{% endblock %}
+
+{% block content %}
+<section class="status-section">
+    <h2>Installed Packages</h2>
+    <p class="section-description">
+        Packages are self-contained scraper bundles with configs and code.
+    </p>
+    <div class="events-list">
+        {% for pkg in packages %}
+        <div class="event-item">
+            <div class="event-summary">
+                <span class="title">{{ pkg.name }}</span>
+                <span class="event-venue">{{ pkg.meta.display_name }}</span>
+                <span class="event-datetime">{{ pkg.scraper_count }} {{ pkg.meta.source }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

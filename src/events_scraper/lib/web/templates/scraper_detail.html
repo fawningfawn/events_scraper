@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}{{ scraper_name }} • Events Browser{% endblock %}
+
+{% block page_title %}{{ scraper_name }} • Events Browser{% endblock %}
+
+{% block breadcrumb %}
+<nav class="breadcrumb">
+    <a href="{{ url_for('events_route') }}">Home</a> / <a href="{{ url_for('status_route') }}">Status</a> / <a href="{{ url_for('status_scrapers_route') }}">Scrapers</a> / {{ scraper_name }}
+</nav>
+{% endblock %}
+
+{% block sidebar_content %}{% endblock %}
+
+{% block content %}
+<!-- Scraper Detail Status -->
+<section class="status-section">
+    <h2>{{ scraper_name }}</h2>
+    <p class="section-description">
+        {% set scraper_data = scraper_status.get(scraper_name, {}) %}
+        Group: {{ scraper_data.get('_group', 'unknown') }} · Source: {{ scraper_data.get('_source', 'unknown') }}
+    </p>
+    <div class="scraper-status">
+        {% if scraper_status %}
+        <table class="stats-table" id="scraper-table">
+            <thead>
+                <tr>
+                    <th>Scraper</th>
+                    {% for year in year_labels %}
+                    <th>{{ year }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for scraper_key, years in scraper_status.items()|sort %}
+                {% if scraper_key == scraper_name %}
+                {% set has_error = false %}
+                {% set has_zero = false %}
+                {% for year in year_labels %}
+                    {% if year in years and years[year]['status_code'] and years[year]['status_code'] != 200 %}
+                        {% set has_error = true %}
+                    {% endif %}
+                    {% if year in years and years[year]['event_count'] == 0 %}
+                        {% set has_zero = true %}
+                    {% endif %}
+                {% endfor %}
+                <tr class="scraper-row" data-has-error="{{ 'true' if has_error else 'false' }}" data-has-zero="{{ 'true' if has_zero else 'false' }}">
+                    <td class="title">{{ scraper_key }}</td>
+                    {% for year in year_labels %}
+                    <td class="status-cell">
+                        {% if year in years %}
+                            {% set status = years[year] %}
+                            {% if status.status_code is none %}
+                                {# No status logged yet #}
+                                <span class="status-icon unknown" title="Not yet scraped">
+                                    <strong>?</strong> Not scraped
+                                </span>
+                                <div class="status-url"><a href="{{ status.url }}" target="_blank" rel="noopener">{{ status.url }}</a></div>
+                            {% elif status.status_code == 200 %}
+                                {# Success - show event count #}
+                                {% if status.event_count > 0 %}
+                                    <span class="status-icon success" title="Success">
+                                        <strong>✓</strong> {{ status.event_count }} events
+                                    </span>
+                                {% else %}
+                                    <span class="status-icon no-events" title="Success but no events found">
+                                        <strong>✗</strong> 0 events
+                                    </span>
+                                {% endif %}
+                                <div class="status-url"><a href="{{ status.url }}" target="_blank" rel="noopener">{{ status.url }}</a></div>
+                            {% else %}
+                                {# Error status #}
+                                <span class="status-icon error" title="Error">
+                                    <strong>⚠</strong> HTTP {{ status.status_code }}
+                                </span>
+                                {% if status.error %}
+                                <div class="error-message">{{ status.error }}</div>
+                                {% endif %}
+                                <div class="status-url"><a href="{{ status.url }}" target="_blank" rel="noopener">{{ status.url }}</a></div>
+                            {% endif %}
+                            <div class="rescrape-button-container">
+                                <button class="rescrape-button" onclick="openRescrapeModal('{{ scraper_key }}', '{{ status.url }}')">Re-scrape</button>
+                            </div>
+                        {% else %}
+                            <span class="status-icon unknown" title="No data">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="status-legend">
+            <h3>Status Icons</h3>
+            <ul>
+                <li><span class="status-icon success"><strong>✓</strong></span> Successfully scraped with events</li>
+                <li><span class="status-icon no-events"><strong>✗</strong></span> Scraped successfully but no events found</li>
+                <li><span class="status-icon error"><strong>⚠</strong></span> HTTP error or scraping failure</li>
+                <li><span class="status-icon unknown"><strong>?</strong></span> Not yet scraped</li>
+            </ul>
+        </div>
+        {% else %}
+        <div class="no-data">
+            <p>No scraper data found.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Events List -->
+{% if events %}
+<section class="status-section">
+    <h2>Events Found</h2>
+    <div class="events-list">
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.title }}</td>
+                    <td>{{ event.date }}</td>
+                    <td>{{ event.location or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% include 'rescrape_modal.html' %}
+{% endblock %}

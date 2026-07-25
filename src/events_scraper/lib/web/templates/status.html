@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Status • Events Browser{% endblock %}
+
+{% block page_title %}Status • Events Browser{% endblock %}
+
+{% block content %}
+<!-- Total Events Overview -->
+<section class="status-section">
+    <h2>Database Overview</h2>
+    <div class="status-overview">
+        <div class="status-card total-events">
+            <h3>Total Events</h3>
+            <div class="status-number">{{ total_events }}</div>
+        </div>
+        <div class="status-card future-events">
+            <h3>Future Events</h3>
+            <div class="status-number">{{ future_events }}</div>
+        </div>
+    </div>
+</section>
+
+<!-- Event Counts by Scraper -->
+<section class="status-section">
+    <h2>Events by Group</h2>
+    <div class="scraper-stats">
+        {% if scraper_stats %}
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Scraper</th>
+                    <th>Total</th>
+                    <th>Future</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scraper_name, total_count, future_count in scraper_stats %}
+                <tr>
+                    <td class="scraper-name">
+                        <a href="{{ url_for('events_route') }}?scraper={{ scraper_name }}">{{ scraper_name }}</a>
+                    </td>
+                    <td class="event-count">{{ total_count }}</td>
+                    <td class="event-count">{{ future_count }}</td>
+                    <td class="percentage">{{ "%.1f"|format((total_count / total_events * 100) if total_events > 0 else 0) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">
+            <p>No scrapers found in database.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

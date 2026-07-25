@@ -1,0 +1,41 @@
+# Core dependencies for event scraping
+requests
+requests-cache  # HTTP caching to avoid hammering sites
+beautifulsoup4
+lxml  # XML/HTML parsing with XPath support
+html2text  # Convert HTML to text for stable date extraction
+dateparser
+playwright  # Browser automation for JavaScript-heavy pages
+
+# Date range parsing for multi-day events
+daterangeparser
+
+# Geocoding support (optional but recommended)
+geopy
+
+# Configuration file support (optional)
+PyYAML
+
+# XDG directory standards
+xdg
+
+# Database support
+sqlalchemy
+psycopg2-binary  # PostgreSQL adapter
+
+# File watching for XDG scraper reloading
+watchdog
+
+# Web interface
+flask  # Lightweight web framework for event browsing interface
+humanize  # Human-readable time and number formatting
+icalendar  # ICS calendar feed generation
+
+# Testing tools
+unittest-xml-reporting  # Generate XML test reports with timing
+junit2html  # Convert XML test reports to HTML
+coverage
+flake8-html
+
+# Temporary pinnings and such
+idna<3.18  # 3.18 renamed uts46data, breaking older imports

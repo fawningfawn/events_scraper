@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "events_scraper"
+version = "1.0.0"
+description = "Plugin-based event scraping system with web interface"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "fawningfawn", email = "bizsb@proton.me"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Multimedia :: Graphics :: Presentation",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+dependencies = [
+    "requests",
+    "requests-cache",
+    "beautifulsoup4",
+    "lxml",
+    "html2text",
+    "dateparser",
+    "daterangeparser",
+    "geopy",
+    "PyYAML",
+    "xdg",
+    "sqlalchemy",
+    "flask",
+    "icalendar",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "flake8",
+    "flake8-html",
+    "isort",
+    "coverage",
+    "unittest-xml-reporting",
+    "junit2html",
+]
+ai = [
+    "playwright",
+]
+postgres = [
+    "psycopg2-binary",
+]
+watch = [
+    "watchdog",
+]
+
+[project.scripts]
+events = "manage:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["manage"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 89
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 89
+known_first_party = ["events_scraper"]

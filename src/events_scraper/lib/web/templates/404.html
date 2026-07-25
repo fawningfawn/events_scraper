@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Not Found • Events Browser{% endblock %}
+
+{% block page_title %}Not Found{% endblock %}
+
+{% block content %}
+<section class="status-section">
+    <h2>404 - Page Not Found</h2>
+    <p class="section-description">
+        The page you're looking for doesn't exist.
+    </p>
+    <div style="margin-top: 2rem;">
+        <p><a href="{{ url_for('events_route') }}">← Back to Events</a></p>
+    </div>
+</section>
+{% endblock %}

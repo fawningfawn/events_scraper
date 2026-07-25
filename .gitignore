@@ -1,0 +1,13 @@
+*.db
+*.log
+reports/
+src/events_scraper.egg-info/
+src/packages/
+!src/packages/__init__.py
+.venv/
+__pycache__/
+*.pyc
+.env
+dist/
+build/
+.pytest_cache/

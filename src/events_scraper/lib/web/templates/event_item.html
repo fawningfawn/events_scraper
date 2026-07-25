@@ -1,0 +1,51 @@
+<div class="event-item {{ 'past-event' if event.is_past_attr else '' }} {{ 'cancelled-event' if event.cancelled else '' }}"
+     data-api-url="{{ event.api_url }}"
+     data-event-id="{{ event.id }}"
+     data-scraper="{{ event.scraper }}"
+     data-cancelled="{{ 'true' if event.cancelled else 'false' }}"
+     role="button"
+     tabindex="0"
+     aria-expanded="false">
+    <div class="event-summary">
+        <input type="checkbox" class="notification-checkbox" data-event-id="{{ event.id }}" aria-label="Subscribe to notifications">
+        <span class="title">{% if event.cancelled %}<span class="cancelled-badge">CANCELLED</span> {% endif %}{{ event.title }}</span>
+        {% if event.subscription_info %}
+        <span class="event-subscriptions">
+            {% for sub in event.subscription_info %}
+            <span class="subscription-badge" title="Subscription #{{ sub.id }}: {{ sub.summary }}">@ {{ sub.summary }}</span>
+            {% endfor %}
+        </span>
+        {% elif event.is_manual_subscription %}
+        <span class="subscription-badge subscription-badge-manual" title="Manually subscribed">@ manual</span>
+        {% endif %}
+        {% if event.categories %}
+        <span class="event-categories">
+            {% for category in event.categories %}
+            <a href="/events/?group={{ current_group }}&date={{ target_date_str }}&category={{ category }}" class="category-badge">{{ category }}</a>
+            {% endfor %}
+        </span>
+        {% endif %}
+        {% if event.venue %}
+        <span class="event-venue"> • {{ event.venue }}</span>
+        {% endif %}
+        <span class="event-datetime"> • {{ event.date_str }}{% if event.formatted_time %} {{ event.formatted_time }}{% endif %}</span>
+        <span class="expand-indicator">▼</span>
+    </div>
+
+    <!-- Hidden details that will be loaded dynamically -->
+    <div class="event-details">
+        <div class="details-content">
+            <!-- Fallback content for no-JavaScript users -->
+            <noscript>
+                <div class="no-js-fallback">
+                    <p>JavaScript is required to load detailed event information dynamically. Basic event information is shown above.</p>
+                    {% if event.detail_url %}
+                    <p><a href="{{ event.detail_url }}" target="_blank" rel="noopener">View full event details on original site →</a></p>
+                    {% endif %}
+                </div>
+            </noscript>
+            <!-- Details will be loaded here via JavaScript -->
+            <div class="loading js-required">Loading details...</div>
+        </div>
+    </div>
+</div>

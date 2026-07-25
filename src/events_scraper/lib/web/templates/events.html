@@ -1,0 +1,755 @@
+{% extends "base.html" %}
+
+{% block title %}Events{% endblock %}
+
+{% block page_title %}{{ page_title if page_title else 'Events' }}{% endblock %}
+
+{% block header_controls %}
+{% if show_date == 'day' %}
+<div class="header-controls">
+    <div class="navigation-controls">
+        <a href="/events/?date=" class="nav-button prev-day" aria-label="Previous day" onclick="previousDay(event)">&lt;&lt;</a>
+        <a href="/events/?date=" class="nav-button next-day" aria-label="Next day" onclick="nextDay(event)">&gt;&gt;</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block sidebar_classes %}is-tab-all-events{% endblock %}
+
+{% block sidebar_content %}
+{% if show_date == 'day' %}
+<div class="group-selector events-controls">
+    <select id="group-select" onchange="changeGroup(this.value)">
+        {% for g in all_groups if g.show_date == 'day' %}
+        <option value="{{ g.group }}" {{ 'selected' if g.group == current_group else '' }}>
+            {{ g.display_name }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}
+
+{% if show_date == 'day' %}
+<div class="scraper-selector events-controls">
+    <select id="scraper-select" onchange="changeScraper(this.value)">
+        <option value="">All Scrapers</option>
+        {% for scraper_option in available_scrapers %}
+        <option value="{{ scraper_option }}" {{ 'selected' if scraper_option == scraper_filter else '' }}>
+            {{ scraper_option }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}
+
+{% if show_date == 'day' %}
+<div class="date-picker-controls events-controls">
+    <input type="date" id="date-input" onchange="changeDate(this.value)">
+    <button onclick="clearDate()" class="clear-date-btn" aria-label="Clear date filter">Clear</button>
+</div>
+{% endif %}
+
+<div class="search-controls">
+    <input type="search" id="event-search" class="search-input" placeholder="Search events..." aria-label="Search events by title, location, or description">
+</div>
+
+<div class="hide-past-controls events-controls">
+    <label class="toggle-label">
+        Hide past
+        <a href="{{ hide_past_toggle_url }}" class="toggle-switch {{ 'active' if hide_past_state == 'ON' else '' }}" aria-label="Toggle hide past events" onclick="toggleHidePast(event)">
+            <span class="toggle-slider {{ 'active' if hide_past_state == 'ON' else '' }}"></span>
+        </a>
+    </label>
+</div>
+
+{% if show_date == 'day' %}
+<div class="filter-controls events-controls">
+    <label class="toggle-label">
+        Filters
+        <a href="{{ filter_toggle_url }}" class="toggle-switch {{ 'active' if filter_state == 'ON' else '' }}" aria-label="Toggle event filters" onclick="toggleFilters(event)">
+            <span class="toggle-slider {{ 'active' if filter_state == 'ON' else '' }}"></span>
+        </a>
+    </label>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block content %}
+<!-- Events Tabs -->
+<div class="profile-tabs">
+    <button class="profile-tab active" data-tab="all-events">All Events</button>
+    <button class="profile-tab" data-tab="subscribed-events">Subscribed Events</button>
+</div>
+
+<!-- All Events Tab -->
+<div id="all-events" class="tab-content active">
+    <div id="allEventsTabError" class="tab-error" style="display: none;"></div>
+    <div class="events-list" id="allEventsList">
+        <p class="loading">Loading events...</p>
+    </div>
+    <div class="pagination-info" id="allEventsPagination" style="display: none;">
+        <p id="allEventsPaginationText"></p>
+        <div class="pagination-controls">
+            <a id="allEventsFirstBtn" class="nav-button" onclick="goToFirstPage('allEvents'); return false;" style="display: none;" href="#" aria-label="First page">⬅︎</a>
+            <a id="allEventsPrevBtn" class="nav-button" onclick="goToPreviousPage('allEvents'); return false;" style="display: none;" href="#" aria-label="Previous page">⬅︎</a>
+            <a id="allEventsNextBtn" class="nav-button" onclick="goToNextPage('allEvents'); return false;" style="display: none;" href="#" aria-label="Next page">➡︎</a>
+            <a id="allEventsLastBtn" class="nav-button" onclick="goToLastPage('allEvents'); return false;" style="display: none;" href="#" aria-label="Last page">➡︎</a>
+        </div>
+    </div>
+</div>
+
+<!-- Subscribed Events Tab -->
+<div id="subscribed-events" class="tab-content">
+    <div id="subscribedEventsTabError" class="tab-error" style="display: none;"></div>
+    <div class="events-list" id="subscribedEventsList">
+        <p class="loading">Loading subscribed events...</p>
+    </div>
+    <div class="pagination-info" id="subscribedEventsPagination" style="display: none;">
+        <p id="subscribedEventsPaginationText"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mark that JavaScript is enabled for progressive enhancement
+    document.body.classList.add('js-enabled');
+
+    // Initialize tab switching
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded - initializing events page');
+
+        initializeEventTabSwitching();
+
+        // Load all events on page load (respect page param from URL)
+        const initialPage = parseInt(new URL(window.location).searchParams.get('page') || '1');
+        loadAllEvents(false, initialPage);
+
+        // Set active tab based on URL
+        const path = window.location.pathname;
+        if (path === '/events/subscribed') {
+            const tabButtons = document.querySelectorAll('.profile-tab');
+            const tabs = document.querySelectorAll('.tab-content');
+            switchEventTab('subscribed-events', tabButtons, tabs);
+        }
+
+        // Setup search filter
+        const searchInput = document.getElementById('event-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                filterEvents(this.value.toLowerCase());
+            });
+        }
+
+        // Initialize date picker with current date if present
+        const dateInput = document.getElementById('date-input');
+        const currentUrl = new URL(window.location);
+        const dateParam = currentUrl.searchParams.get('date');
+        if (dateInput && dateParam) {
+            dateInput.value = dateParam;
+        }
+    });
+
+    function loadAllEvents(hideLoadingMessage = false, page = 1) {
+        const container = document.getElementById('allEventsList');
+        const errorDiv = document.getElementById('allEventsTabError');
+        const paginationDiv = document.getElementById('allEventsPagination');
+
+        console.log('loadAllEvents called with page:', page);
+        if (!hideLoadingMessage) {
+            container.innerHTML = '<p class="loading">Loading events...</p>';
+        }
+        errorDiv.style.display = 'none';
+        paginationDiv.style.display = 'none';
+
+        // Build API URL with query parameters from current page URL
+        const currentUrl = new URL(window.location);
+        const params = new URLSearchParams();
+
+        // Add group, date, filters, and hide_past from current URL
+        const group = currentUrl.searchParams.get('group') || '{{ default_group }}';
+        const dateParam = currentUrl.searchParams.get('date');
+        const filters = currentUrl.searchParams.get('filters') || 'on';
+        const hidePast = currentUrl.searchParams.get('hide_past') || 'on';
+        const scraper = currentUrl.searchParams.get('scraper');
+
+        params.set("group", group);
+        if (dateParam) params.set('date', dateParam);
+        params.set('filters', filters);
+        params.set('hide_past', hidePast);
+        if (scraper) params.set('scraper', scraper);
+        params.set('page', page);
+
+        const apiUrl = `/api/events/all?${params.toString()}`;
+        console.log('Fetching from:', apiUrl);
+
+        fetch(apiUrl)
+            .then(response => {
+                console.log('API response status:', response.status, response.ok);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                console.log('API data:', data);
+                console.log('Events count:', data.events ? data.events.length : 0);
+                console.log('First event sample:', data.events && data.events[0] ? data.events[0].substring(0, 100) : 'none');
+
+                if (!data.events || data.events.length === 0) {
+                    container.innerHTML = '<p>No events found.</p>';
+                    return;
+                }
+
+                const html = data.events.join('');
+                console.log('Combined HTML length:', html.length);
+                container.innerHTML = html;
+                console.log('Container HTML after insert:', container.innerHTML.substring(0, 100));
+
+                // Setup event handlers
+                setupEventHandlers(container);
+
+                // Show pagination if available
+                console.log('Pagination data:', data.pagination);
+                if (data.pagination) {
+                    const paginationText = document.getElementById('allEventsPaginationText');
+                    const firstBtn = document.getElementById('allEventsFirstBtn');
+                    const prevBtn = document.getElementById('allEventsPrevBtn');
+                    const nextBtn = document.getElementById('allEventsNextBtn');
+                    const lastBtn = document.getElementById('allEventsLastBtn');
+                    const { page, per_page, total, pages, has_prev, has_next } = data.pagination;
+                    const start = (page - 1) * per_page + 1;
+                    const end = Math.min(page * per_page, total);
+                    paginationText.textContent = `Showing ${start} - ${end} of ${total} events${pages > 1 ? ` (Page ${page} of ${pages})` : ''}`;
+
+                    // Show pagination section if multiple pages
+                    if (pages > 1) {
+                        paginationDiv.style.display = 'block';
+                        // Always show buttons, but disable when not applicable
+                        firstBtn.style.display = '';
+                        firstBtn.classList.toggle('disabled', !has_prev);
+                        prevBtn.style.display = '';
+                        prevBtn.classList.toggle('disabled', !has_prev);
+                        nextBtn.style.display = '';
+                        nextBtn.classList.toggle('disabled', !has_next);
+                        lastBtn.style.display = '';
+                        lastBtn.classList.toggle('disabled', !has_next);
+                    } else {
+                        paginationDiv.style.display = 'none';
+                    }
+                    console.log('Pagination shown');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading all events:', error);
+                errorDiv.textContent = 'Failed to load events: ' + error.message;
+                errorDiv.style.display = 'block';
+                container.innerHTML = '';
+            });
+    }
+
+    function setupEventHandlers(container) {
+        try {
+            console.log('setupEventHandlers called');
+            const eventItems = container.querySelectorAll('.event-item');
+            console.log('Found event items:', eventItems.length);
+
+            eventItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    toggleEventDetails(this);
+                });
+
+                item.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleEventDetails(this);
+                    }
+                });
+            });
+
+            // Setup notification checkboxes
+            const checkboxes = container.querySelectorAll('.notification-checkbox');
+            console.log('Found checkboxes:', checkboxes.length);
+
+            checkboxes.forEach(checkbox => {
+                const eventId = checkbox.dataset.eventId;
+                loadNotificationStatus(eventId, checkbox);
+                checkbox.addEventListener('change', function(e) {
+                    handleNotificationChange(eventId, this.checked);
+                });
+                checkbox.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            });
+            console.log('setupEventHandlers completed successfully');
+        } catch (error) {
+            console.error('Error in setupEventHandlers:', error);
+        }
+    }
+
+    function initializeEventTabSwitching() {
+        const tabButtons = document.querySelectorAll('.profile-tab');
+        const tabs = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+                switchEventTab(tabName, tabButtons, tabs);
+            });
+        });
+    }
+
+    function switchEventTab(tabName, tabButtons, tabs) {
+        try {
+            // Update active tab button
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update tab content visibility
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.id === tabName) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // Update sidebar state for conditional visibility
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.className = sidebar.className.replace(/is-tab-\w+/g, '');
+            sidebar.classList.add(`is-tab-${tabName}`);
+
+            // Load subscribed events when tab is clicked
+            if (tabName === 'subscribed-events') {
+                loadSubscribedEvents();
+            }
+        } catch (error) {
+            console.error('Error switching tab:', error);
+        }
+    }
+
+    function loadSubscribedEvents() {
+        const container = document.getElementById('subscribedEventsList');
+        const errorDiv = document.getElementById('subscribedEventsTabError');
+        const paginationDiv = document.getElementById('subscribedEventsPagination');
+
+        console.log('loadSubscribedEvents called');
+        container.innerHTML = '<p class="loading">Loading subscribed events...</p>';
+        errorDiv.style.display = 'none';
+        paginationDiv.style.display = 'none';
+
+        fetch('/api/events/subscribed?group={{ current_group }}')
+            .then(response => {
+                console.log('Subscribed events API response status:', response.status, response.ok);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Subscribed events data:', data);
+                console.log('Subscribed events count:', data.events ? data.events.length : 0);
+
+                if (!data.events || data.events.length === 0) {
+                    console.log('No subscribed events found');
+                    container.innerHTML = '<p>No subscribed events found.</p>';
+                    return;
+                }
+
+                console.log('Rendering', data.events.length, 'subscribed events');
+                container.innerHTML = data.events.join('');
+                setupEventHandlers(container);
+
+                // Show pagination if available
+                if (data.pagination) {
+                    const paginationText = document.getElementById('subscribedEventsPaginationText');
+                    const { page, per_page, total, pages } = data.pagination;
+                    const start = (page - 1) * per_page + 1;
+                    const end = Math.min(page * per_page, total);
+                    paginationText.textContent = `Showing ${start} - ${end} of ${total} events${pages > 1 ? ` (Page ${page} of ${pages})` : ''}`;
+                    paginationDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading subscribed events:', error);
+                errorDiv.textContent = 'Failed to load subscribed events: ' + error.message;
+                errorDiv.style.display = 'block';
+                container.innerHTML = '';
+            });
+    }
+
+    // Day navigation
+    function previousDay(e) {
+        e.preventDefault();
+        const currentUrl = new URL(window.location);
+        const dateParam = currentUrl.searchParams.get('date');
+        const currentDate = new Date(dateParam ? dateParam : new Date());
+        currentDate.setDate(currentDate.getDate() - 1);
+        currentUrl.searchParams.set('date', currentDate.toISOString().split('T')[0]);
+        window.location.href = currentUrl.toString();
+    }
+
+    function nextDay(e) {
+        e.preventDefault();
+        const currentUrl = new URL(window.location);
+        const dateParam = currentUrl.searchParams.get('date');
+        const currentDate = new Date(dateParam ? dateParam : new Date());
+        currentDate.setDate(currentDate.getDate() + 1);
+        currentUrl.searchParams.set('date', currentDate.toISOString().split('T')[0]);
+        window.location.href = currentUrl.toString();
+    }
+
+    // Pagination navigation
+    function goToFirstPage(tabName) {
+        const btn = document.getElementById('allEventsFirstBtn');
+        if (btn.classList.contains('disabled')) return;
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', '1');
+        window.history.replaceState({}, '', currentUrl.toString());
+        loadAllEvents(false, 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goToPreviousPage(tabName) {
+        const btn = document.getElementById('allEventsPrevBtn');
+        if (btn.classList.contains('disabled')) return;
+        const currentUrl = new URL(window.location);
+        const currentPage = parseInt(currentUrl.searchParams.get('page') || '1');
+        if (currentPage > 1) {
+            currentUrl.searchParams.set('page', currentPage - 1);
+            const newPage = currentPage - 1;
+            window.history.replaceState({}, '', currentUrl.toString());
+            loadAllEvents(false, newPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function goToNextPage(tabName) {
+        const btn = document.getElementById('allEventsNextBtn');
+        if (btn.classList.contains('disabled')) return;
+        const currentUrl = new URL(window.location);
+        const currentPage = parseInt(currentUrl.searchParams.get('page') || '1');
+        currentUrl.searchParams.set('page', currentPage + 1);
+        const newPage = currentPage + 1;
+        window.history.replaceState({}, '', currentUrl.toString());
+        loadAllEvents(false, newPage);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goToLastPage(tabName) {
+        const btn = document.getElementById('allEventsLastBtn');
+        if (btn.classList.contains('disabled')) return;
+        // Get current pagination data to find last page
+        const paginationText = document.getElementById('allEventsPaginationText');
+        const text = paginationText.textContent;
+        const match = text.match(/Page \d+ of (\d+)/);
+        if (match) {
+            const lastPage = parseInt(match[1]);
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('page', lastPage);
+            window.history.replaceState({}, '', currentUrl.toString());
+            loadAllEvents(false, lastPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    // Toggle hide past without full page reload
+    function toggleHidePast(e) {
+        e.preventDefault();
+        const currentUrl = new URL(window.location);
+        const currentHidePast = currentUrl.searchParams.get('hide_past') || 'on';
+        const newHidePast = currentHidePast === 'on' ? 'off' : 'on';
+        currentUrl.searchParams.set('hide_past', newHidePast);
+        // Update URL without triggering a navigation
+        window.history.replaceState({}, '', currentUrl.toString());
+        // Reload events without showing loading message
+        loadAllEvents(true);
+        // Update the toggle switch appearance
+        const toggleSwitch = document.querySelector('.hide-past-controls .toggle-switch');
+        const toggleSlider = document.querySelector('.hide-past-controls .toggle-slider');
+        if (newHidePast === 'on') {
+            toggleSwitch.classList.add('active');
+            toggleSlider.classList.add('active');
+        } else {
+            toggleSwitch.classList.remove('active');
+            toggleSlider.classList.remove('active');
+        }
+    }
+
+    // Toggle filters without full page reload
+    function toggleFilters(e) {
+        e.preventDefault();
+        const currentUrl = new URL(window.location);
+        const currentFilters = currentUrl.searchParams.get('filters') || 'on';
+        const newFilters = currentFilters === 'on' ? 'off' : 'on';
+        currentUrl.searchParams.set('filters', newFilters);
+        // Update URL without triggering a navigation
+        window.history.replaceState({}, '', currentUrl.toString());
+        // Reload events without showing loading message
+        loadAllEvents(true);
+        // Update the toggle switch appearance
+        const toggleSwitch = document.querySelector('.filter-controls .toggle-switch');
+        const toggleSlider = document.querySelector('.filter-controls .toggle-slider');
+        if (newFilters === 'on') {
+            toggleSwitch.classList.add('active');
+            toggleSlider.classList.add('active');
+        } else {
+            toggleSwitch.classList.remove('active');
+            toggleSlider.classList.remove('active');
+        }
+    }
+
+    // Group selection functionality
+    function changeGroup(selectedGroup) {
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('group', selectedGroup);
+        // Preserve current filter and other settings
+        const currentFilters = currentUrl.searchParams.get('filters') || 'on';
+        const currentHidePast = currentUrl.searchParams.get('hide_past') || 'on';
+        currentUrl.searchParams.set('filters', currentFilters);
+        currentUrl.searchParams.set('hide_past', currentHidePast);
+        window.location.href = currentUrl.toString();
+    }
+
+    // Scraper selection functionality
+    function changeScraper(selectedScraper) {
+        const currentUrl = new URL(window.location);
+        if (selectedScraper) {
+            currentUrl.searchParams.set('scraper', selectedScraper);
+        } else {
+            currentUrl.searchParams.delete('scraper');
+        }
+        window.location.href = currentUrl.toString();
+    }
+
+    // Date selection functionality
+    function changeDate(selectedDate) {
+        const currentUrl = new URL(window.location);
+        if (selectedDate) {
+            currentUrl.searchParams.set('date', selectedDate);
+        } else {
+            currentUrl.searchParams.delete('date');
+        }
+        window.location.href = currentUrl.toString();
+    }
+
+    function clearDate() {
+        const dateInput = document.getElementById('date-input');
+        dateInput.value = '';
+        changeDate('');
+    }
+
+    function filterEvents(searchTerm) {
+        const eventItems = document.querySelectorAll('.event-item');
+        let visibleCount = 0;
+
+        eventItems.forEach(item => {
+            const title = item.querySelector('.title')?.textContent?.toLowerCase() || '';
+            const venue = item.querySelector('.event-venue')?.textContent?.toLowerCase() || '';
+            const description = item.querySelector('.description')?.textContent?.toLowerCase() || '';
+
+            const matches = title.includes(searchTerm) ||
+                           venue.includes(searchTerm) ||
+                           description.includes(searchTerm);
+
+            if (matches || !searchTerm) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function toggleEventDetails(eventItem) {
+        const detailsDiv = eventItem.querySelector('.event-details');
+        const detailsContent = eventItem.querySelector('.details-content');
+        const expandIndicator = eventItem.querySelector('.expand-indicator');
+        const isExpanded = eventItem.getAttribute('aria-expanded') === 'true';
+
+        if (isExpanded) {
+            // Collapse
+            detailsDiv.style.display = 'none';
+            eventItem.setAttribute('aria-expanded', 'false');
+            expandIndicator.textContent = '▼';
+        } else {
+            // Expand and load details if not already loaded
+            detailsDiv.style.display = 'block';
+            eventItem.setAttribute('aria-expanded', 'true');
+            expandIndicator.textContent = '▲';
+
+            // Load details if not already loaded
+            if (!detailsContent.dataset.loaded) {
+                loadEventDetails(eventItem);
+            }
+        }
+    }
+
+    function loadEventDetails(eventItem) {
+        const apiUrl = eventItem.dataset.apiUrl;
+        const detailsContent = eventItem.querySelector('.details-content');
+
+        if (!apiUrl) {
+            detailsContent.innerHTML = '<div class="error">No API URL available</div>';
+            return;
+        }
+
+        // Show loading state
+        detailsContent.innerHTML = '<div class="loading">Loading details...</div>';
+
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayEventDetails(detailsContent, data);
+                detailsContent.dataset.loaded = 'true';
+            })
+            .catch(error => {
+                console.error('Error loading event details:', error);
+                detailsContent.innerHTML = `<div class="error">Failed to load details: ${error.message}</div>`;
+            });
+    }
+
+    function displayEventDetails(container, data) {
+        let html = '<div class="event-detail-content">';
+
+        if (data.categories && data.categories.length > 0) {
+            html += `<div class="categories">Categories: ${data.categories.join(', ')}</div>`;
+        }
+
+        if (data.location) {
+            html += `<div class="location">Location: ${data.location}</div>`;
+        }
+
+        if (data.latitude && data.longitude) {
+            html += `<div class="coordinates">Coordinates: ${data.latitude}, ${data.longitude}</div>`;
+        }
+
+        if (data.description) {
+            html += `<div class="description">${data.description}</div>`;
+        }
+
+        if (data.detail_url) {
+            html += `<div class="detail-link"><a href="${data.detail_url}" target="_blank" rel="noopener">View original event →</a></div>`;
+        }
+
+        html += `<div class="cancel-controls">
+            <button class="btn-cancel-toggle" data-event-id="${data.id}" onclick="toggleCancelled(${data.id}, this)">
+                ${data.cancelled ? 'Mark as Active' : 'Mark as Cancelled'}
+            </button>
+            <span class="cancel-status">${data.cancelled ? 'This event is marked as cancelled' : ''}</span>
+        </div>`;
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function toggleCancelled(eventId, button) {
+        button.disabled = true;
+        button.textContent = '...';
+
+        fetch(`/api/event/${eventId}/cancel`, { method: 'POST' })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                button.disabled = false;
+                button.textContent = data.cancelled ? 'Mark as Active' : 'Mark as Cancelled';
+                const statusSpan = button.parentElement.querySelector('.cancel-status');
+                if (statusSpan) {
+                    statusSpan.textContent = data.cancelled ? 'This event is marked as cancelled' : '';
+                }
+                // Update the event item's cancelled class and badge
+                const eventItem = document.querySelector(`.event-item[data-event-id="${eventId}"]`);
+                if (eventItem) {
+                    const titleEl = eventItem.querySelector('.title');
+                    if (data.cancelled) {
+                        eventItem.classList.add('cancelled-event');
+                        eventItem.dataset.cancelled = 'true';
+                        if (titleEl && !titleEl.querySelector('.cancelled-badge')) {
+                            titleEl.innerHTML = '<span class="cancelled-badge">CANCELLED</span> ' + titleEl.textContent;
+                        }
+                    } else {
+                        eventItem.classList.remove('cancelled-event');
+                        eventItem.dataset.cancelled = 'false';
+                        const badge = titleEl ? titleEl.querySelector('.cancelled-badge') : null;
+                        if (badge) badge.remove();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling cancelled:', error);
+                button.disabled = false;
+                button.textContent = 'Error';
+            });
+    }
+
+    // Notification checkbox functionality
+    function setupNotificationCheckboxes() {
+        const checkboxes = document.querySelectorAll('.notification-checkbox');
+        checkboxes.forEach(checkbox => {
+            const eventId = checkbox.dataset.eventId;
+
+            // Load current subscription status
+            loadNotificationStatus(eventId, checkbox);
+
+            // Handle checkbox change
+            checkbox.addEventListener('change', function(e) {
+                handleNotificationChange(eventId, this.checked);
+            });
+
+            // Stop propagation when clicking checkbox (don't expand event)
+            checkbox.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+    }
+
+    function loadNotificationStatus(eventId, checkbox) {
+        fetch(`/api/events/${eventId}/notifications/status`)
+            .then(response => response.json())
+            .then(data => {
+                checkbox.checked = data.subscribed;
+            })
+            .catch(error => {
+                console.error('Error loading notification status:', error);
+            });
+    }
+
+    function handleNotificationChange(eventId, isChecked) {
+        const checkbox = document.querySelector(`[data-event-id="${eventId}"]`);
+        const endpoint = isChecked
+            ? `/api/events/${eventId}/notifications/subscribe`
+            : `/api/events/${eventId}/notifications`;
+        const method = isChecked ? 'POST' : 'DELETE';
+
+        // Disable checkbox while request is pending
+        checkbox.disabled = true;
+
+        fetch(endpoint, { method: method })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Status updated successfully
+                console.log('Notification status changed:', data);
+                checkbox.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error updating notification:', error);
+                // Revert checkbox on error
+                checkbox.checked = !isChecked;
+                checkbox.disabled = false;
+            });
+    }
+</script>
+{% endblock %}

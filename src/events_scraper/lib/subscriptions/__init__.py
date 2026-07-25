@@ -1,0 +1,1 @@
+"""Event subscriptions module"""

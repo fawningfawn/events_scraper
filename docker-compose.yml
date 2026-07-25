@@ -1,0 +1,43 @@
+services:
+  runningpy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DOCKER_UID=${DOCKER_UID:-1000}
+        - DOCKER_GID=${DOCKER_GID:-1000}
+        - TEST_APT_PROXY=${TEST_APT_PROXY:-}
+        - TEST_PYPI_PROXY=${TEST_PYPI_PROXY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./.coveragerc:/test/.coveragerc
+      - ./.flake8:/test/.flake8
+      - ./scripts:/test/scripts
+      - ./src:/test/src
+      - ./reports:/test/reports
+      - ./tests:/test/tests
+    environment:
+      - PYTHONPATH=/test/src
+      - TEST_ARGS=${TEST_ARGS:-}
+      - POSTGRES_URL=postgresql://events_user:events_pass@postgres:5432/events_test
+      - PYTHONTRACEMALLOC=5
+    command: ["bash", "/test/scripts/run_tests.sh"]
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=events_pass
+      - POSTGRES_USER=events_user
+      - POSTGRES_DB=events_test
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U events_user -d events_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

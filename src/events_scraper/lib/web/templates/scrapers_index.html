@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}All Scrapers • Events Browser{% endblock %}
+
+{% block page_title %}All Scrapers • Events Browser{% endblock %}
+
+{% block breadcrumb %}
+<nav class="breadcrumb">
+    <a href="{{ url_for('events_route') }}">Home</a> / <a href="{{ url_for('status_route') }}">Status</a> / Scrapers
+</nav>
+{% endblock %}
+
+{% block sidebar_content %}
+<div class="scraper-filters events-controls">
+    <label class="toggle-label">
+        Only errors
+        <a href="#" class="toggle-switch {{ 'active' if errors_filter else '' }}" aria-label="Toggle errors filter" onclick="toggleErrorsFilter(event)">
+            <span class="toggle-slider {{ 'active' if errors_filter else '' }}"></span>
+        </a>
+    </label>
+</div>
+
+<div class="scraper-filters events-controls">
+    <label class="toggle-label">
+        Only 0 events
+        <a href="#" class="toggle-switch {{ 'active' if zero_filter else '' }}" aria-label="Toggle zero events filter" onclick="toggleZeroFilter(event)">
+            <span class="toggle-slider {{ 'active' if zero_filter else '' }}"></span>
+        </a>
+    </label>
+</div>
+
+<div class="scraper-filters events-controls">
+    <div class="scraper-selector">
+        <select id="group-filter" onchange="filterByGroup(this.value)">
+            <option value="">All groups</option>
+            {% for g in all_groups %}
+            <option value="{{ g.group }}" {{ 'selected' if group_filter == g.group else '' }}>{{ g.display_name or g.group }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- All Scrapers Status -->
+<section class="status-section">
+    <h2>All Scrapers Status</h2>
+    <div class="scraper-status">
+        <p>
+            This page is mostly for yaml-based scrapers that have a single url for yearly events.
+        </p>
+        {% if scraper_status %}
+        <table class="stats-table" id="scraper-table">
+            <thead>
+                <tr>
+                    <th>Scraper</th>
+                    {% for year in year_labels %}
+                    <th>{{ year }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for scraper_key, years in scraper_status.items()|sort %}
+                {% set has_error = false %}
+                {% set has_zero = false %}
+                {% for year in year_labels %}
+                    {% if year in years and years[year]['status_code'] and years[year]['status_code'] != 200 %}
+                        {% set has_error = true %}
+                    {% endif %}
+                    {% if year in years and years[year]['event_count'] == 0 %}
+                        {% set has_zero = true %}
+                    {% endif %}
+                {% endfor %}
+                <tr class="scraper-row" data-has-error="{{ 'true' if has_error else 'false' }}" data-has-zero="{{ 'true' if has_zero else 'false' }}">
+                    <td class="title">
+                        <a href="{{ url_for('scraper_detail_route', scraper_name=scraper_key) }}">{{ scraper_key }}</a>
+                        <span class="source-badge source-{{ years.get('_source', 'unknown') }}">{{ years.get('_source', 'unknown') }}</span>
+                    </td>
+                    {% for year in year_labels %}
+                    <td class="status-cell">
+                        {% if year in years %}
+                            {% set status = years[year] %}
+                            {% if status.status_code is none %}
+                                {# No status logged yet #}
+                                <span class="status-icon unknown" title="Not yet scraped">
+                                    <strong>?</strong> Not scraped
+                                </span>
+                                <div class="status-url"><a href="{{ status.url }}" target="_blank" rel="noopener">{{ status.url }}</a></div>
+                            {% elif status.status_code == 200 %}
+                                {# Success - show event count #}
+                                {% if status.event_count > 0 %}
+                                    <span class="status-icon success" title="Success">
+                                        <strong>✓</strong> {{ status.event_count }} events
+                                    </span>
+                                {% else %}
+                                    <span class="status-icon no-events" title="Success but no events found">
+                                        <strong>✗</strong> 0 events
+                                    </span>
+                                {% endif %}
+                                <div class="status-url"><a href="{{ status.url }}" target="_blank" rel="noopener">{{ status.url }}</a></div>
+                            {% else %}
+                                {# Error status #}
+                                <span class="status-icon error" title="Error">
+                                    <strong>⚠</strong> HTTP {{ status.status_code }}
+                                </span>
+                                {% if status.error %}
+                                <div class="error-message">Scraping error</div>
+                                {% endif %}
+                                <div class="status-url"><a href="{{ status.url }}" target="_blank" rel="noopener">{{ status.url }}</a></div>
+                            {% endif %}
+                        {% else %}
+                            <span class="status-icon unknown" title="No data">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="status-legend">
+            <h3>Status Icons</h3>
+            <ul>
+                <li><span class="status-icon success"><strong>✓</strong></span> Successfully scraped with events</li>
+                <li><span class="status-icon no-events"><strong>✗</strong></span> Scraped successfully but no events found</li>
+                <li><span class="status-icon error"><strong>⚠</strong></span> HTTP error or scraping failure</li>
+                <li><span class="status-icon unknown"><strong>?</strong></span> Not yet scraped</li>
+            </ul>
+        </div>
+        {% else %}
+        <div class="no-data">
+            <p>No scrapers found.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let filterState = {
+    errors: new URL(window.location).searchParams.get('errors') === 'on',
+    zero: new URL(window.location).searchParams.get('zero') === 'on'
+};
+
+function filterByGroup(group) {
+    const url = new URL(window.location);
+    if (group) {
+        url.searchParams.set('group', group);
+    } else {
+        url.searchParams.delete('group');
+    }
+    window.location = url.toString();
+}
+
+function toggleErrorsFilter(event) {
+    event.preventDefault();
+    filterState.errors = !filterState.errors;
+    updateFiltersUI();
+    updateTableVisibility();
+    updateURL();
+}
+
+function toggleZeroFilter(event) {
+    event.preventDefault();
+    filterState.zero = !filterState.zero;
+    updateFiltersUI();
+    updateTableVisibility();
+    updateURL();
+}
+
+function updateFiltersUI() {
+    const toggles = document.querySelectorAll('.scraper-filters .toggle-switch');
+    const errorsToggle = toggles[0];
+    const zeroToggle = toggles[1];
+
+    [
+        [errorsToggle, filterState.errors],
+        [zeroToggle, filterState.zero]
+    ].forEach(([toggle, active]) => {
+        if (active) {
+            toggle?.classList.add('active');
+            toggle?.querySelector('.toggle-slider')?.classList.add('active');
+        } else {
+            toggle?.classList.remove('active');
+            toggle?.querySelector('.toggle-slider')?.classList.remove('active');
+        }
+    });
+}
+
+function updateURL() {
+    const url = new URL(window.location);
+    url.searchParams.set('errors', filterState.errors ? 'on' : 'off');
+    url.searchParams.set('zero', filterState.zero ? 'on' : 'off');
+    window.history.replaceState({}, '', url.toString());
+}
+
+function updateTableVisibility() {
+    const rows = document.querySelectorAll('.scraper-row');
+    rows.forEach(row => {
+        const hasError = row.querySelector('.status-icon.error') !== null;
+        const hasZero = row.querySelector('.status-icon.no-events') !== null;
+
+        let visible = true;
+        if (filterState.errors && !hasError) visible = false;
+        if (filterState.zero && !hasZero) visible = false;
+
+        row.style.display = visible ? '' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateFiltersUI();
+    updateTableVisibility();
+});
+</script>
+{% endblock %}

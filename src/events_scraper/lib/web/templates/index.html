@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events Browser</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="layout-wrapper">
+            <header>
+                <h1><a href="/">{{ page_title if page_title else (date + " • " + group) }}</a></h1>
+                <div class="header-controls">
+                    <div class="navigation-controls">
+                        {% if show_date == 'all' %}
+                            <a href="{{ url_for('status_scrapers_route') }}" class="nav-button status-button" aria-label="Scraper status">i</a>
+                        {% elif pagination %}
+                            {% if prev_date_url %}
+                            <a href="{{ prev_date_url }}" class="nav-button prev-page" aria-label="Previous page">&lt;&lt;</a>
+                            {% else %}
+                            <span class="nav-button disabled" aria-label="No previous page">&lt;&lt;</span>
+                            {% endif %}
+                            {% if next_date_url %}
+                            <a href="{{ next_date_url }}" class="nav-button next-page" aria-label="Next page">&gt;&gt;</a>
+                            {% else %}
+                            <span class="nav-button disabled" aria-label="No next page">&gt;&gt;</span>
+                            {% endif %}
+                            <a href="/status" class="nav-button status-button" aria-label="Status page">i</a>
+                        {% else %}
+                            <a href="{{ prev_date_url }}" class="nav-button prev-day" aria-label="Previous day">&lt;&lt;</a>
+                            <a href="{{ next_date_url }}" class="nav-button next-day" aria-label="Next day">&gt;&gt;</a>
+                            <a href="/status" class="nav-button status-button" aria-label="Status page">i</a>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </header>
+
+            <main>
+                <div class="events-list">
+                {% for event in events %}
+                <div class="event-item {{ 'past-event' if event.is_past_attr else '' }}"
+                     data-api-url="{{ event.api_url }}"
+                     role="button"
+                     tabindex="0"
+                     aria-expanded="false">
+                    <div class="event-summary">
+                        <input type="checkbox" class="notification-checkbox" data-event-id="{{ event.id }}" aria-label="Subscribe to notifications">
+                        <span class="title">{{ event.title }}</span>
+                        {% if event.categories %}
+                        <span class="event-categories">
+                            {% for category in event.categories %}
+                            <a href="?group={{ current_group }}{% if target_date_str %}&date={{ target_date_str }}{% endif %}&category={{ category }}" class="category-badge">{{ category }}</a>
+                            {% endfor %}
+                        </span>
+                        {% endif %}
+                        {% if event.venue %}
+                        <span class="event-venue"> • {{ event.venue }}</span>
+                        {% endif %}
+                        <span class="event-datetime"> • {{ event.date_str }}{% if event.formatted_time %} {{ event.formatted_time }}{% endif %}</span>
+                        <span class="expand-indicator">▼</span>
+                    </div>
+
+                    <!-- Hidden details that will be loaded dynamically -->
+                    <div class="event-details">
+                        <div class="details-content">
+                            <!-- Fallback content for no-JavaScript users -->
+                            <noscript>
+                                <div class="no-js-fallback">
+                                    <p>JavaScript is required to load detailed event information dynamically. Basic event information is shown above.</p>
+                                    {% if event.detail_url %}
+                                    <p><a href="{{ event.detail_url }}" target="_blank" rel="noopener">View full event details on original site →</a></p>
+                                    {% endif %}
+                                </div>
+                            </noscript>
+                            <!-- Details will be loaded here via JavaScript -->
+                            <div class="loading js-required">Loading details...</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if not events %}
+            <div class="no-events">
+                <p>No events found. Events are loaded from the database with automatic scraping fallback.</p>
+            </div>
+            {% endif %}
+
+            {% if pagination %}
+            <div class="pagination-info">
+                <p>
+                    Showing {{ ((pagination.page - 1) * pagination.per_page + 1) }} -
+                    {{ (pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total) }}
+                    of {{ pagination.total }} events
+                    {% if pagination.pages > 1 %}
+                    (Page {{ pagination.page }} of {{ pagination.pages }})
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+            </main>
+
+            <aside class="sidebar">
+                {% if current_user %}
+                <div class="user-display">
+                    <a href="{{ url_for('user_profile_route') }}" class="username-link">{{ current_user.username }}</a>
+                </div>
+                {% endif %}
+
+                <div class="search-controls">
+                    <input type="search" id="event-search" class="search-input" placeholder="Search events..." aria-label="Search events by title, location, or description">
+                </div>
+
+                <div class="group-selector">
+                    <select id="group-select" onchange="changeGroup(this.value)">
+                        {% for group_option in supported_groups %}
+                        <option value="{{ group_option }}" {{ 'selected' if group_option == current_group else '' }}>
+                            {{ group_option.capitalize() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if show_date == 'day' %}
+                <div class="scraper-selector">
+                    <select id="scraper-select" onchange="changeScraper(this.value)">
+                        <option value="">All Scrapers</option>
+                        {% for scraper_option in available_scrapers %}
+                        <option value="{{ scraper_option }}" {{ 'selected' if scraper_option == scraper_filter else '' }}>
+                            {{ scraper_option }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                {% if not scraper_filter %}
+                <div class="hide-past-controls">
+                    <label class="toggle-label">
+                        Hide past
+                        <a href="{{ hide_past_toggle_url }}" class="toggle-switch {{ 'active' if hide_past_state == 'ON' else '' }}" aria-label="Toggle hide past events">
+                            <span class="toggle-slider {{ 'active' if hide_past_state == 'ON' else '' }}"></span>
+                        </a>
+                    </label>
+                </div>
+                {% endif %}
+
+                {% if show_date == 'day' %}
+                <div class="filter-controls">
+                    <label class="toggle-label">
+                        Filters
+                        <a href="{{ filter_toggle_url }}" class="toggle-switch {{ 'active' if filter_state == 'ON' else '' }}" aria-label="Toggle event filters">
+                            <span class="toggle-slider {{ 'active' if filter_state == 'ON' else '' }}"></span>
+                        </a>
+                    </label>
+                </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // Mark that JavaScript is enabled for progressive enhancement
+        document.body.classList.add('js-enabled');
+
+        // City selection functionality
+        function changeGroup(selectedCity) {
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('group', selectedCity);
+            // Preserve current filter, hide_past, scraper, and date settings
+            const currentFilters = currentUrl.searchParams.get('filters') || 'on';
+            const currentHidePast = currentUrl.searchParams.get('hide_past') || 'on';
+            const currentScraper = currentUrl.searchParams.get('scraper');
+            const currentDate = currentUrl.searchParams.get('date');
+            currentUrl.searchParams.set('filters', currentFilters);
+            currentUrl.searchParams.set('hide_past', currentHidePast);
+            if (currentScraper) {
+                currentUrl.searchParams.set('scraper', currentScraper);
+            }
+            if (currentDate) {
+                currentUrl.searchParams.set('date', currentDate);
+            }
+            window.location.href = currentUrl.toString();
+        }
+
+        // Scraper selection functionality
+        function changeScraper(selectedScraper) {
+            const currentUrl = new URL(window.location);
+            if (selectedScraper) {
+                currentUrl.searchParams.set('scraper', selectedScraper);
+                // Remove date when viewing scraper-specific events (shows all future events)
+                currentUrl.searchParams.delete('date');
+            } else {
+                currentUrl.searchParams.delete('scraper');
+            }
+            // Preserve all other current settings
+            window.location.href = currentUrl.toString();
+        }
+
+        // Event card expansion and search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const eventItems = document.querySelectorAll('.event-item');
+            const searchInput = document.getElementById('event-search');
+
+            // Setup event item interactions
+            eventItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    toggleEventDetails(this);
+                });
+
+                // Handle keyboard navigation
+                item.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleEventDetails(this);
+                    }
+                });
+            });
+
+            // Setup search filter
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    filterEvents(this.value.toLowerCase());
+                });
+            }
+
+            // Setup notification checkboxes
+            setupNotificationCheckboxes();
+        });
+
+        function filterEvents(searchTerm) {
+            const eventItems = document.querySelectorAll('.event-item');
+            let visibleCount = 0;
+
+            eventItems.forEach(item => {
+                const title = item.querySelector('.title')?.textContent?.toLowerCase() || '';
+                const venue = item.querySelector('.event-venue')?.textContent?.toLowerCase() || '';
+                const description = item.querySelector('.description')?.textContent?.toLowerCase() || '';
+
+                const matches = title.includes(searchTerm) ||
+                               venue.includes(searchTerm) ||
+                               description.includes(searchTerm);
+
+                if (matches || !searchTerm) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Show/hide "no events" message based on search results
+            const eventsList = document.querySelector('.events-list');
+            const noEventsDiv = document.querySelector('.no-events');
+
+            if (visibleCount === 0 && searchTerm) {
+                if (!noEventsDiv) {
+                    const msg = document.createElement('div');
+                    msg.className = 'no-events search-no-results';
+                    msg.innerHTML = '<p>No events match your search.</p>';
+                    eventsList.parentNode.insertBefore(msg, eventsList.nextSibling);
+                } else if (noEventsDiv.classList.contains('search-no-results')) {
+                    noEventsDiv.style.display = 'block';
+                }
+            } else {
+                const searchNoResults = document.querySelector('.no-events.search-no-results');
+                if (searchNoResults) {
+                    searchNoResults.style.display = 'none';
+                }
+            }
+        }
+
+        function toggleEventDetails(eventItem) {
+            const detailsDiv = eventItem.querySelector('.event-details');
+            const detailsContent = eventItem.querySelector('.details-content');
+            const expandIndicator = eventItem.querySelector('.expand-indicator');
+            const isExpanded = eventItem.getAttribute('aria-expanded') === 'true';
+
+            if (isExpanded) {
+                // Collapse
+                detailsDiv.style.display = 'none';
+                eventItem.setAttribute('aria-expanded', 'false');
+                expandIndicator.textContent = '▼';
+            } else {
+                // Expand and load details if not already loaded
+                detailsDiv.style.display = 'block';
+                eventItem.setAttribute('aria-expanded', 'true');
+                expandIndicator.textContent = '▲';
+
+                // Load details if not already loaded
+                if (!detailsContent.dataset.loaded) {
+                    loadEventDetails(eventItem);
+                }
+            }
+        }
+
+        function loadEventDetails(eventItem) {
+            const apiUrl = eventItem.dataset.apiUrl;
+            const detailsContent = eventItem.querySelector('.details-content');
+
+            if (!apiUrl) {
+                detailsContent.innerHTML = '<div class="error">No API URL available</div>';
+                return;
+            }
+
+            // Show loading state
+            detailsContent.innerHTML = '<div class="loading">Loading details...</div>';
+
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayEventDetails(detailsContent, data);
+                    detailsContent.dataset.loaded = 'true';
+                })
+                .catch(error => {
+                    console.error('Error loading event details:', error);
+                    detailsContent.innerHTML = `<div class="error">Failed to load details: ${error.message}</div>`;
+                });
+        }
+
+        function displayEventDetails(container, data) {
+            let html = '<div class="event-detail-content">';
+
+            if (data.categories && data.categories.length > 0) {
+                html += `<div class="categories">Categories: ${data.categories.join(', ')}</div>`;
+            }
+
+            if (data.location) {
+                html += `<div class="location">Location: ${data.location}</div>`;
+            }
+
+            if (data.latitude && data.longitude) {
+                html += `<div class="coordinates">Coordinates: ${data.latitude}, ${data.longitude}</div>`;
+            }
+
+            if (data.description) {
+                html += `<div class="description">${data.description}</div>`;
+            }
+
+            if (data.detail_url) {
+                html += `<div class="detail-link"><a href="${data.detail_url}" target="_blank" rel="noopener">View original event →</a></div>`;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Notification checkbox functionality
+        function setupNotificationCheckboxes() {
+            const checkboxes = document.querySelectorAll('.notification-checkbox');
+            checkboxes.forEach(checkbox => {
+                const eventId = checkbox.dataset.eventId;
+
+                // Load current subscription status
+                loadNotificationStatus(eventId, checkbox);
+
+                // Handle checkbox change
+                checkbox.addEventListener('change', function(e) {
+                    handleNotificationChange(eventId, this.checked);
+                });
+
+                // Stop propagation when clicking checkbox (don't expand event)
+                checkbox.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            });
+        }
+
+        function loadNotificationStatus(eventId, checkbox) {
+            fetch(`/api/events/${eventId}/notifications/status`)
+                .then(response => response.json())
+                .then(data => {
+                    checkbox.checked = data.subscribed;
+                })
+                .catch(error => {
+                    console.error('Error loading notification status:', error);
+                });
+        }
+
+        function handleNotificationChange(eventId, isChecked) {
+            const checkbox = document.querySelector(`[data-event-id="${eventId}"]`);
+            const endpoint = isChecked
+                ? `/api/events/${eventId}/notifications/subscribe`
+                : `/api/events/${eventId}/notifications`;
+            const method = isChecked ? 'POST' : 'DELETE';
+
+            // Disable checkbox while request is pending
+            checkbox.disabled = true;
+
+            fetch(endpoint, { method: method })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Status updated successfully
+                    console.log('Notification status changed:', data);
+                    checkbox.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error updating notification:', error);
+                    // Revert checkbox on error
+                    checkbox.checked = !isChecked;
+                    checkbox.disabled = false;
+                });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[run]
+omit =
+	tests/*
+source = .
+
+[html]
+directory = reports/coverage
+
+[paths]
+source = .

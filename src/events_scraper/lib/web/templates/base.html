@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Events{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <div class="layout-wrapper">
+            <header>
+                <h1><a href="{{ url_for('events_route') }}">{% block page_title %}Events{% endblock %}</a></h1>
+                <button class="nav-toggle" aria-label="Toggle navigation" onclick="toggleNav()">☰</button>
+                {% block breadcrumb %}{% endblock %}
+                {% block header_controls %}{% endblock %}
+            </header>
+
+            <main>
+                {% block content %}{% endblock %}
+            </main>
+
+            <aside class="sidebar {% block sidebar_classes %}{% endblock %}">
+                {% set sections = [] %}
+                {% for g in all_groups %}
+                    {% set s = g.nav_section or g.group %}
+                    {% if s not in sections %}
+                        {% set _ = sections.append(s) %}
+                        <div class="user-display">
+                            {% if g.nav_section %}
+                            <a href="{{ url_for('events_route') }}" class="username-link">{{ g.nav_section }}</a>
+                            {% else %}
+                            <a href="{{ url_for('events_route', group=g.group) }}" class="username-link">{{ g.nav_label }}</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="user-display">
+                    <a href="{{ url_for('user_profile_route') }}" class="username-link">{{ current_user.username }}</a>
+                </div>
+
+                <div class="user-display">
+                    <a href="{{ url_for('packages_route') }}" class="username-link">Packages</a>
+                </div>
+
+                <div class="user-display">
+                    <a href="{{ url_for('status_route') }}" class="username-link">Status</a>
+                </div>
+
+                <div class="user-display">
+                    <a href="{{ url_for('status_scrapers_route') }}" class="username-link">Scrapers</a>
+                </div>
+
+                {% block sidebar_content %}{% endblock %}
+            </aside>
+        </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+    <script>
+    function toggleNav() {
+        document.querySelector('.sidebar').classList.toggle('open');
+        document.querySelector('.nav-toggle').classList.toggle('active');
+    }
+    </script>
+</body>
+</html>

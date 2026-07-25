@@ -1,0 +1,21 @@
+name: Tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          export DOCKER_UID=$(id -u)
+          export DOCKER_GID=$(id -g)
+          mkdir -p reports
+          docker compose build
+          docker compose up --exit-code-from runningpy --abort-on-container-exit

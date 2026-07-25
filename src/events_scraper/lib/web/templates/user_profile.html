@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block page_title %}User Profile{% endblock %}
+
+{% block sidebar_content %}
+<div class="subscriptions-controls">
+    <button type="button" class="btn-submit" onclick="openSubscriptionModal()" style="width: 100%; margin: 10px 0;">New Subscription</button>
+</div>
+
+<div class="notifications-controls">
+    <label class="toggle-label">
+        Show past
+        <a href="#" class="toggle-switch" id="expiredToggle" aria-label="Toggle past notifications">
+            <span class="toggle-slider"></span>
+        </a>
+    </label>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Profile Tabs -->
+<div class="profile-tabs">
+    <button class="profile-tab active" data-tab="profile">Profile</button>
+    <button class="profile-tab" data-tab="notifications">Notifications</button>
+    <button class="profile-tab" data-tab="subscriptions-list">Subscriptions</button>
+    <button class="profile-tab" data-tab="feeds">Feeds</button>
+</div>
+
+<!-- Profile Tab Content -->
+<div id="profile" class="tab-content active">
+    <div class="user-profile-form">
+        <h2>Edit Profile</h2>
+        <form id="profileForm">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" value="{{ current_user.username }}" disabled>
+                <small>Username cannot be changed</small>
+            </div>
+
+            <div class="form-group">
+                <label for="phone_number">Phone Number:</label>
+                <input type="tel" id="phone_number" name="phone_number" placeholder="+1234567890" value="{{ current_user.phone_number or '' }}">
+                <small>For Signal notifications</small>
+            </div>
+
+            <div class="form-group">
+                <label for="default_group">Default Group:</label>
+                <div class="group-selector">
+                    <select id="default_group" name="default_group">
+                        <option value="">Choose a group...</option>
+                    </select>
+                </div>
+                <small>Events on homepage will show this group</small>
+            </div>
+
+            <button type="submit" class="btn-submit">Save Changes</button>
+            <button type="button" class="btn-cancel" onclick="window.location.href='{{ url_for('events_route') }}'">Cancel</button>
+        </form>
+
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Notifications Tab Content -->
+<div id="notifications" class="tab-content">
+    <div id="notificationsTabError" class="tab-error" style="display: none;"></div>
+    <div class="user-notifications">
+        <h2>Your Notifications</h2>
+        <div id="notificationsList" class="notifications-list">
+            <p class="loading">Loading notifications...</p>
+        </div>
+    </div>
+</div>
+
+<!-- My Subscriptions Tab Content -->
+<div id="subscriptions-list" class="tab-content">
+    <div id="subscriptionsListTabError" class="tab-error" style="display: none;"></div>
+    <div class="user-subscriptions">
+        <h2>Your Subscriptions</h2>
+        <div id="subscriptionsList" class="subscriptions-list">
+            <p class="loading">Loading subscriptions...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Feeds Tab Content -->
+<div id="feeds" class="tab-content">
+    <div class="feed-urls">
+        <h2>Calendar Feeds</h2>
+        <p>Subscribe to these URLs in your calendar app (iPhone, Google Calendar, etc.):</p>
+        <div class="form-group">
+            <label>Subscribed Events:</label>
+            <input type="text" readonly value="{{ request.host_url.rstrip('/') }}{{ url_for('user_events_feed', user_id=current_user.id) }}" onclick="this.select()">
+        </div>
+        <h3>Group Feeds</h3>
+        <p>All events for each group:</p>
+        {% for group in all_groups %}
+        {% if group.feed_enabled %}
+        <div class="form-group">
+            <label>{{ group.display_name or group.group }}:</label>
+            <input type="text" readonly value="{{ request.host_url.rstrip('/') }}/feeds/{{ group.group }}.ics" onclick="this.select()">
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Subscription Modal (Create/Edit) -->
+<div id="subscriptionModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="subscriptionModalTitle">Create Subscription</h2>
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <form id="subscriptionModalForm">
+            <input type="hidden" id="subscription-id" value="">
+
+            <div class="form-group">
+                <label for="keyword-title">Title Keyword:</label>
+                <input type="text" id="keyword-title" placeholder="e.g., Kammerorchester">
+                <small>Words to search for in event titles</small>
+            </div>
+
+            <div class="form-group">
+                <label for="keyword-body">Body Keyword:</label>
+                <input type="text" id="keyword-body" placeholder="e.g., concert">
+                <small>Words to search for in event descriptions</small>
+            </div>
+
+            <div class="form-group">
+                <label>Groups:</label>
+                <div id="groups" class="groups-checkboxes">
+                    <p class="loading">Loading available groups...</p>
+                </div>
+                <small id="groupsHint">Select one or more groups</small>
+            </div>
+
+            <button type="submit" class="btn-submit" id="subscriptionSubmitBtn">Create Subscription</button>
+            <button type="button" class="btn-cancel" id="subscriptionModalCancelBtn">Cancel</button>
+            <div id="subscriptionModalStatus" class="status-message" style="display: none;"></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='profile.js') }}"></script>
+{% endblock %}
