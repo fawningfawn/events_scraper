@@ -608,14 +608,10 @@ class BaseEventScraper(ABC):
 
         html_content = self._fetch_content_from_web(full_url)
         if not html_content:
-            # Store failure case
-            detail = EventDetail(
-                url=detail_url,
-                content="Error fetching detail content",
-                scraper=getattr(self, "scraper_name", "unknown"),
-            )
-            detail.save()
-            return detail
+            # Don't persist failures - otherwise the error is served forever
+            # via the existing-detail fast path above.
+            logger.warning(f"Failed to fetch detail content for {full_url}")
+            return None
 
         parsed_content = self._parse_detail_content(html_content)
 

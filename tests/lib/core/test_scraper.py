@@ -591,7 +591,11 @@ class TestBaseEventScraperDateRange(DatabaseTestCase):
     @patch("events_scraper.lib.core.models.save_event_detail")
     @patch("events_scraper.lib.core.models.EventDetail.get_detail")
     def test_fetch_detail_content_web_failure(self, mock_get_detail, mock_save_detail):
-        """Test fetching detail content when web fetch fails"""
+        """Test fetching detail content when web fetch fails.
+
+        A failed fetch must NOT be persisted - otherwise the error is returned
+        forever via the existing-detail fast path on subsequent runs.
+        """
         mock_get_detail.return_value = None
 
         with patch.object(self.scraper, "_fetch_content_from_web") as mock_fetch:
@@ -599,11 +603,27 @@ class TestBaseEventScraperDateRange(DatabaseTestCase):
 
             result = self.scraper.fetch_detail_content("/event/1")
 
-            self.assertIsNotNone(result)
-            self.assertEqual(result.url, "/event/1")
-            self.assertEqual(result.content, "Error fetching detail content")
-            self.assertEqual(result.scraper, "test_scraper")
-            mock_save_detail.assert_called_once()
+            self.assertIsNone(result)
+            mock_save_detail.assert_not_called()
+
+    @patch("events_scraper.lib.core.models.save_event_detail")
+    @patch("events_scraper.lib.core.models.EventDetail.get_detail")
+    def test_fetch_detail_content_failure_not_cached(
+        self, mock_get_detail, mock_save_detail
+    ):
+        """A failed fetch must be retried on the next run, not served from cache."""
+        mock_get_detail.return_value = None
+
+        with patch.object(self.scraper, "_fetch_content_from_web") as mock_fetch:
+            mock_fetch.return_value = None
+
+            # First attempt fails - must not write anything to the database
+            self.scraper.fetch_detail_content("/event/1")
+            mock_save_detail.assert_not_called()
+
+            # Second attempt should try the network again (still no cached entry)
+            self.scraper.fetch_detail_content("/event/1")
+            self.assertEqual(mock_fetch.call_count, 2)
 
     @patch("events_scraper.lib.core.models.save_event_detail")
     @patch("events_scraper.lib.core.models.EventDetail.get_detail")
