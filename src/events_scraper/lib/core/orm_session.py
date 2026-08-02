@@ -11,7 +11,6 @@ from typing import Optional
 from sqlalchemy import and_
 from sqlalchemy import create_engine
 from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as SqlSession
 from sqlalchemy.orm import sessionmaker
 
@@ -342,17 +341,14 @@ def upsert_event(event: Event) -> None:
 
         # Check if event already exists based on content hash + date
         # (same event on same day = duplicate, even with different URLs)
-        # Query all events from same date and check content hash match in Python
-        candidates = session.query(Event).filter(Event.date == event.date).all()
-
-        existing = None
-        for candidate in candidates:
-            candidate_hash = compute_content_hash(
-                candidate.title, candidate.location, candidate.time
+        existing = (
+            session.query(Event)
+            .filter(
+                Event.content_hash == content_hash,
+                Event.date == event.date,
             )
-            if candidate_hash == content_hash:
-                existing = candidate
-                break
+            .first()
+        )
 
         if existing:
             logger.info(
@@ -385,28 +381,6 @@ def upsert_event(event: Event) -> None:
         # Match against subscriptions to create notifications
         _match_subscriptions(saved_event, session)
 
-    except IntegrityError:
-        # Handle race condition - another process may have inserted the same event
-        session.rollback()
-        # Check if existing event was cancelled before merging
-        was_cancelled = False
-        existing_in_db = (
-            session.query(Event)
-            .filter(
-                Event.content_hash == content_hash,
-                Event.date == event.date,
-            )
-            .first()
-        )
-        if existing_in_db:
-            was_cancelled = existing_in_db.cancelled
-        # Re-try with merge which handles duplicates
-        session.merge(event)
-        session.commit()
-        # Restore user-set cancelled flag (merge would reset it to default)
-        if was_cancelled and existing_in_db:
-            existing_in_db.cancelled = True
-            session.commit()
     finally:
         session.close()
 
