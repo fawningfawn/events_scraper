@@ -24,9 +24,18 @@ def resolve_scraper(scraper_name: str, target_url: str | None = None):
         for scraper in pkg.load_scrapers():
             if scraper.scraper_name != scraper_name:
                 continue
-            if target_url and getattr(scraper, "url", None) != target_url:
+            if target_url and _scraper_url(scraper) != target_url:
                 continue
             return scraper
+    return None
+
+
+def _scraper_url(scraper) -> str | None:
+    """Return the primary URL of a scraper, regardless of its type."""
+    for attr in ("url", "events_url", "base_url"):
+        value = getattr(scraper, attr, None)
+        if value:
+            return value
     return None
 
 
@@ -58,11 +67,11 @@ def run_scraper(
 
     http_status, error_message = get_scraper_http_status(
         scraper_name=scraper.scraper_name,
-        target_url=scraper.url,
+        target_url=_scraper_url(scraper),
     )
     return ScrapeResult(
         scraper_name=scraper.scraper_name,
-        url=scraper.url,
+        url=_scraper_url(scraper),
         scraped_count=scraped_count,
         saved_count=saved_count,
         http_status=http_status,
