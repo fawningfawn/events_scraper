@@ -31,11 +31,11 @@ class TestEventSubscriptionModel(unittest.TestCase):
         self.engine.dispose()
 
     def test_create_subscription_with_all_fields(self):
-        """Test EventSubscription can be created with user_id, group, keyword, status"""
+        """Test EventSubscription can be created with user_id, group, title_keyword, status"""
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Kammerorchester",
+            title_keyword="Kammerorchester",
             status="active",
         )
         self.session.add(subscription)
@@ -44,7 +44,7 @@ class TestEventSubscriptionModel(unittest.TestCase):
         self.assertIsNotNone(subscription.id)
         self.assertEqual(subscription.user_id, self.user.id)
         self.assertEqual(subscription.group, "paris")
-        self.assertEqual(subscription.keyword, "Kammerorchester")
+        self.assertEqual(subscription.title_keyword, "Kammerorchester")
         self.assertEqual(subscription.status, "active")
 
     def test_retrieve_subscription_by_id(self):
@@ -52,7 +52,7 @@ class TestEventSubscriptionModel(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Orchestra",
+            title_keyword="Orchestra",
             status="active",
         )
         self.session.add(subscription)
@@ -61,25 +61,15 @@ class TestEventSubscriptionModel(unittest.TestCase):
 
         retrieved = self.session.query(EventSubscription).filter_by(id=sub_id).first()
         self.assertIsNotNone(retrieved)
-        self.assertEqual(retrieved.keyword, "Orchestra")
+        self.assertEqual(retrieved.title_keyword, "Orchestra")
         self.assertEqual(retrieved.group, "paris")
-
-    def test_rejects_empty_keyword(self):
-        """Test rejects empty keyword"""
-        with self.assertRaises(ValueError):
-            EventSubscription(
-                user_id=self.user.id,
-                group="paris",
-                keyword="",
-                status="active",
-            )
 
     def test_subscription_defaults_to_active(self):
         """Test subscription defaults to active status"""
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Test",
+            title_keyword="Test",
         )
         self.session.add(subscription)
         self.session.commit()
@@ -91,19 +81,19 @@ class TestEventSubscriptionModel(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Test",
+            title_keyword="Test",
         )
         self.session.add(subscription)
         self.session.commit()
 
         self.assertIsNotNone(subscription.ctime)
 
-    def test_update_subscription_keyword(self):
-        """Test can update subscription keyword"""
+    def test_update_subscription_title_keyword(self):
+        """Test can update subscription title keyword"""
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Original",
+            title_keyword="Original",
             status="active",
         )
         self.session.add(subscription)
@@ -111,19 +101,19 @@ class TestEventSubscriptionModel(unittest.TestCase):
         sub_id = subscription.id
 
         # Update
-        subscription.keyword = "Updated"
+        subscription.title_keyword = "Updated"
         self.session.commit()
 
         # Verify
         updated = self.session.query(EventSubscription).filter_by(id=sub_id).first()
-        self.assertEqual(updated.keyword, "Updated")
+        self.assertEqual(updated.title_keyword, "Updated")
 
     def test_update_subscription_status(self):
         """Test can update subscription status"""
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Test",
+            title_keyword="Test",
             status="active",
         )
         self.session.add(subscription)
@@ -139,7 +129,7 @@ class TestEventSubscriptionModel(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Test",
+            title_keyword="Test",
         )
         self.session.add(subscription)
         self.session.commit()

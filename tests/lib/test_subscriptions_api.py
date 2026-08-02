@@ -233,9 +233,6 @@ class TestSubscriptionsAPI(unittest.TestCase):
         subscription = EventSubscription(
             user_id=user.id,
             group="paris",
-            keyword="Kammerorchester",
-            title_keyword="Kammerorchester",
-            body_keyword=None,
             status="active",
         )
         session.add(subscription)

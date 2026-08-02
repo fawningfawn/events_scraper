@@ -341,7 +341,6 @@ class EventSubscription(Base):
 
     # Subscription details
     group: Mapped[str] = mapped_column("group", String, nullable=False)
-    keyword: Mapped[str] = mapped_column(String, nullable=False)
     title_keyword: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     body_keyword: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
@@ -352,15 +351,8 @@ class EventSubscription(Base):
     # Relationships
     user: Mapped["User"] = relationship("User")
 
-    def __init__(self, **kwargs):
-        """Initialize subscription with validation"""
-        super().__init__(**kwargs)
-        # Validate keyword on creation
-        if not self.keyword or not self.keyword.strip():
-            raise ValueError("Keyword cannot be empty")
-
     def __repr__(self):
         return (
             f"<EventSubscription(id={self.id}, user_id={self.user_id}, "
-            f"group='{self.group}', keyword='{self.keyword}', status='{self.status}')>"
+            f"group='{self.group}', status='{self.status}')>"
         )

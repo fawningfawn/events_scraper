@@ -98,7 +98,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -144,7 +143,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="active",
@@ -167,7 +165,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="solo",
             title_keyword=None,
             body_keyword="solo",
             status="active",
@@ -189,7 +186,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester concert",
             title_keyword="Kammerorchester",
             body_keyword="concert",
             status="active",
@@ -211,7 +207,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -239,7 +234,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Nonexistent",
             title_keyword="Nonexistent",
             body_keyword=None,
             status="active",
@@ -261,7 +255,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -290,7 +283,6 @@ class TestSubscriptionBackfill(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -359,7 +351,6 @@ class TestSubscriptionModificationRecompute(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -415,7 +406,6 @@ class TestSubscriptionModificationRecompute(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user_id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",

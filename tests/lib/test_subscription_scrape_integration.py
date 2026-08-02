@@ -42,7 +42,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -72,7 +71,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="active",
@@ -112,7 +110,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Kammerorchester",
             title_keyword="Kammerorchester",
             body_keyword=None,
             status="active",
@@ -144,7 +141,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="active",
@@ -189,7 +185,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         active_sub = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="active",
@@ -200,7 +195,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         disabled_sub = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="disabled",
@@ -233,7 +227,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="active",
@@ -262,7 +255,6 @@ class TestSubscriptionScrapeIntegration(unittest.TestCase):
         subscription = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="Concert",
             title_keyword="Concert",
             body_keyword=None,
             status="active",

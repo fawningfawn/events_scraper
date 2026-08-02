@@ -29,7 +29,6 @@ class UpsertSubscriptionMatchingTestCase(DatabaseTestCase):
         sub = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="jazz",
             title_keyword="jazz",
         )
         self.session.add(sub)
@@ -52,7 +51,6 @@ class UpsertSubscriptionMatchingTestCase(DatabaseTestCase):
         sub = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="jazz",
             title_keyword="jazz",
         )
         self.session.add(sub)
@@ -75,7 +73,6 @@ class UpsertSubscriptionMatchingTestCase(DatabaseTestCase):
         sub = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="jazz",
             title_keyword="jazz",
         )
         self.session.add(sub)
@@ -103,7 +100,6 @@ class UpsertSubscriptionMatchingTestCase(DatabaseTestCase):
         sub = EventSubscription(
             user_id=self.user.id,
             group="paris",
-            keyword="jazz",
             title_keyword="jazz",
         )
         self.session.add(sub)

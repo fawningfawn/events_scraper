@@ -29,7 +29,7 @@ def list_subscriptions():
         subscriptions = (
             session.query(EventSubscription)
             .filter_by(user_id=user.id)
-            .order_by(EventSubscription.group, EventSubscription.keyword)
+            .order_by(EventSubscription.group, EventSubscription.title_keyword)
             .all()
         )
 
@@ -50,7 +50,6 @@ def list_subscriptions():
                 {
                     "id": sub.id,
                     "group": sub.group,
-                    "keyword": sub.keyword,
                     "title_keyword": sub.title_keyword,
                     "body_keyword": sub.body_keyword,
                     "status": sub.status,
@@ -106,7 +105,6 @@ def create_subscription():
             subscription = EventSubscription(
                 user_id=user.id,
                 group=group,
-                keyword=f"{title_keyword or ''} {body_keyword or ''}".strip(),
                 title_keyword=title_keyword,
                 body_keyword=body_keyword,
                 status="active",
