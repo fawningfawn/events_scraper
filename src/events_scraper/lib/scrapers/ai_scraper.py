@@ -1,5 +1,5 @@
 """
-AI-powered AI scraper using LLM for HTML parsing
+AI scraper using LLM for HTML parsing
 
 Instead of brittle CSS selectors, uses Claude/OpenAI/Grok to extract
 event information directly from HTML.
@@ -64,7 +64,7 @@ class AIScraper(LLMAnalysisMixin):
         selector_keep: list = None,
     ):
         """
-        Initialize AI AI scraper
+        Initialize AI scraper
 
         Args:
             url: Page URL
@@ -216,14 +216,14 @@ class AIScraper(LLMAnalysisMixin):
         url_instruction = "\n".join(extra_instructions) if extra_instructions else ""
 
         start_year, end_year = self._get_valid_year_window()
-        return f"""Extract AI scraper/event information from this page.
+        return f"""Extract event information from this page.
 
 URL: {url}
 
 {content_type}:
 {content}
 
-Please extract AI scrapers or events mentioned on this page and return them as JSON.
+Please extract events mentioned on this page and return them as JSON.
 
 IMPORTANT RULES:
 1. Only extract events with dates between {start_year} and {end_year} (inclusive)
